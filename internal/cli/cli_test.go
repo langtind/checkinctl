@@ -455,6 +455,13 @@ func TestChooseWaitsForAPlace(t *testing.T) {
 	if exit != 0 || h.sleeps != 3 || h.changes() != 1 || result.Attempts != 1 || h.chosen[activities] != climbing || len(result.Choices) != 1 || result.Choices[0].Option != "Climbing" {
 		t.Errorf("exit = %d, sleeps = %d, changes = %d, stdout = %s, stderr = %q", exit, h.sleeps, h.changes(), stdout, stderr)
 	}
+	// Every look and the try are noted with the time, on stderr.
+	want := "Note: 2026-10-13T18:00:00Z Waiting until 2026-10-13T18:10:00Z for a place in \"Climbing\", looking every 30s.\n" +
+		"Note: 2026-10-13T18:00:30Z \"Climbing\" is full.\nNote: 2026-10-13T18:01:00Z \"Climbing\" is full.\n" +
+		"Note: 2026-10-13T18:01:30Z \"Climbing\" has 1 left. Sending the change, try 1.\nNote: 2026-10-13T18:01:30Z The change was made.\n"
+	if stderr != want {
+		t.Errorf("stderr = %q", stderr)
+	}
 }
 
 func TestChooseGivesUpWhenTheWaitIsOver(t *testing.T) {

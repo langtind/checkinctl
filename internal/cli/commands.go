@@ -554,10 +554,19 @@ func (a *App) choose(ctx context.Context, c *ctlkit.Call) error {
 		return err
 	}
 
+	// With --wait, every look and every try is noted on stderr with the
+	// time, so that a run left alone can be followed and checked afterwards.
+	note := func(format string, args ...any) {
+		if wait > 0 {
+			c.Note("%s %s", a.Now().Format(time.RFC3339), fmt.Sprintf(format, args...))
+		}
+	}
 	deadline := a.Now().Add(wait)
+	note("Waiting until %s for a place in %q, looking every %s.", deadline.Format(time.RFC3339), oneLine(option.Name), interval)
 	for {
 		if option.Free() {
 			result.Attempts++
+			note("%q has %s. Sending the change, try %d.", oneLine(option.Name), places(option.Left), result.Attempts)
 			answer, err := a.Client.Choose(ctx, ticket.Code, result.Request)
 			if err != nil {
 				if err := a.unclear(ctx, ticket, name, groupID, optionID, err); err != nil {
@@ -567,8 +576,10 @@ func (a *App) choose(ctx context.Context, c *ctlkit.Call) error {
 				break
 			}
 			if len(answer.Warnings) == 0 && answer.Options[groupID] == optionID {
+				note("The change was made.")
 				break
 			}
+			note("The change was refused with the warning %q. The ticket keeps what it had.", strings.Join(answer.Warnings, ", "))
 			if len(answer.Warnings) != 1 || answer.Warnings[0] != checkin.WarningFull {
 				return ctlkit.Errorf(ctlkit.KindConflict, "the change was refused with the warning %q", strings.Join(answer.Warnings, ", ")).
 					WithHint(`run "%s ticket %s" to see what the ticket has.`, Name, name)
@@ -579,6 +590,7 @@ func (a *App) choose(ctx context.Context, c *ctlkit.Call) error {
 			result.Left = option.Left
 		}
 		if wait == 0 || a.Now().Add(interval).After(deadline) {
+			note("Giving up. Nothing was changed.")
 			return full(option, name)
 		}
 		if err := a.Sleep(ctx, interval); err != nil {
@@ -590,17 +602,26 @@ func (a *App) choose(ctx context.Context, c *ctlkit.Call) error {
 				option = g.Option(optionID)
 				result.Left = option.Left
 			}
+			if !option.Free() {
+				note("%q is full.", oneLine(option.Name))
+			}
 		} else {
-			c.Note("Could not look at the event: %v. Looking again in %s.", err, interval)
+			note("Could not look at the event: %v. Looking again in %s.", err, interval)
 		}
 	}
 
 	for i := range result.Then {
+		note("Choosing %q in %q.", oneLine(result.Then[i].To.Name), oneLine(result.Then[i].Group.Name))
 		if err := a.then(ctx, c, ticket, name, &result.Then[i]); err != nil {
+			note("That choice was not made: %v", err)
 			return ctlkit.Errorf(ctlkit.KindOf(err), "%q was changed to %q, but the choice of %q in %q was not made: %w",
 				oneLine(group.Name), oneLine(option.Name), oneLine(result.Then[i].To.Name), oneLine(result.Then[i].Group.Name), err).
 				WithHint(`the first change stays. Run "%s ticket %s" to see what the ticket has.`, Name, name)
 		}
+	}
+
+	if len(result.Then) > 0 {
+		note("Every choice was made.")
 	}
 
 	// Look after: what the ticket has now.
