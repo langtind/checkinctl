@@ -76,11 +76,12 @@ with `additionals: [{"mode": "update", "id": <group-id>, "child_id": <option-id>
 | --- | --- |
 | `update` to an option with places left | `warnings: []`, and `additionals` lists the new option under the group. The page showed the new choice at once |
 | `update` back to the first option | The same |
+| `add` of an option in a group the ticket had no choice in, a level that shows only with the new activity | `warnings: []`, and the option was listed under its group |
 | `update` to an option with `left: 0` | `warnings: [{"id": <option-id>, "type": "additional", "warning": "full"}]`, and `additionals` still lists the old option. **The ticket kept what it had** |
 
 `additionals` in the answer is every line of the ticket, text fields included, each with its own line id, the `additional_id` (the option, or the group for a line without options) and `additional_parent_id` (the group, or `null`).
 
-**A choice in a hidden group.** A level group shows only for one activity. After the activity was changed, the answer still listed the level of the old activity, and the edit page showed that group as hidden with nothing checked. When the activity was changed back, the level showed again. So the service keeps a choice in a group that no longer applies.
+**A choice in a hidden group.** A level group shows only for one activity. After the activity was changed, the answer still listed the level of the old activity, and the edit page showed that group as hidden with nothing checked. When the activity was changed back, the level showed again. So the service keeps a choice in a group that no longer applies. The order page shows it too: after a change of activity it listed the new activity, the level of the old activity, and the level of the new one.
 
 ### Running a change twice
 
@@ -99,7 +100,7 @@ All three are for the organiser's own data and need the organiser's credentials.
 ## Read out of the web client, not tried
 
 - Warnings the page's script handles besides `full`: `already_exists` ("Alternativet er allerede valgt"), `full_waiting_available` (the option is full and has a waiting list, and the page asks before it sends the same change with `"waiting": true`), and `not_available`.
-- `mode: "add"` for a group the ticket has no choice in, and `mode: "delete"` for "Meld av".
+- `mode: "delete"` for "Meld av".
 - Text and number fields are changed with the same mutation, with `text` or `number` in place of `child_id`. They hold what the participant wrote about health and next of kin, and the tool leaves them alone.
 - `waiting_list` was `false` on every option of the event that was looked at, so no waiting list was seen.
 
